@@ -16,21 +16,23 @@ const config = {
 let gameState;
 
 function initGame() {
-    const savedState = localStorage.getItem('bakerGameState');
-    if (savedState) {
-        gameState = JSON.parse(savedState);
-    } else {
-        gameState = {
-            money: config.initialMoney,
-            supplies: JSON.parse(JSON.stringify(config.supplies)),
-            equipment: JSON.parse(JSON.stringify(config.equipment)),
-            day: 1,
-        };
-    }
+    const defaultState = {
+        money: config.initialMoney,
+        supplies: JSON.parse(JSON.stringify(config.supplies)),
+        equipment: JSON.parse(JSON.stringify(config.equipment)),
+        day: 1,
+        debt: 0,
+    };
+    let savedState = localStorage.getItem('bakerGameState');
+
+    savedState = savedState ? JSON.parse(savedState) : {};
+
+    gameState = Object.assign({}, defaultState, savedState);
+
     saveGameState();
     renderState();
     logMessage("Welcome to Baker!");
-    promptForDecisions();
+    promptForCategory();
 }
 
 function saveGameState() {
@@ -40,7 +42,8 @@ function saveGameState() {
 function renderState() {
     const stateContainer = document.getElementById('state');
     stateContainer.innerHTML = ``;
-    stateContainer.innerHTML += `<p>Money: $${gameState.money.toFixed(2)}</p>`;
+    stateContainer.innerHTML += `<p>Money: ${gameState.money.toFixed(2)}</p>`;
+    stateContainer.innerHTML += `<p>Debt: ${gameState.debt.toFixed(2)}</p>`;
     stateContainer.innerHTML += `<h3>Supplies</h3>`;
     gameState.supplies.forEach(item => {
         stateContainer.innerHTML += `<p>${item.name}: ${item.quantity} ${item.unit}</p>`;
@@ -57,7 +60,84 @@ function logMessage(message) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-function promptForDecisions() {
+function promptForCategory() {
+    const decisionsContainer = document.getElementById('decisions');
+    let formHTML = `<p>What would you like to get?</p>`;
+    formHTML += `
+        <div>
+            <input type="radio" id="cat-supplies" name="category" value="supplies">
+            <label for="cat-supplies">Supplies</label>
+        </div>
+        <div>
+            <input type="radio" id="cat-employees" name="category" value="employees">
+            <label for="cat-employees">Employees</label>
+        </div>
+        <div>
+            <input type="radio" id="cat-bakeries" name="category" value="bakeries">
+            <label for="cat-bakeries">Bakeries</label>
+        </div>
+        <div>
+            <input type="radio" id="cat-loan" name="category" value="loan">
+            <label for="cat-loan">Loan</label>
+        </div>
+        <button id="select-category-button">Select</button>
+    `;
+    decisionsContainer.innerHTML = formHTML;
+    document.getElementById('select-category-button').addEventListener('click', handleCategoryChoice);
+}
+
+function handleCategoryChoice() {
+    const selectedCategory = document.querySelector('input[name="category"]:checked').value;
+    switch (selectedCategory) {
+        case 'supplies':
+            promptForSupplies();
+            break;
+        case 'employees':
+        case 'bakeries':
+            handleWIP();
+            break;
+        case 'loan':
+            promptForLoan();
+            break;
+    }
+}
+
+function handleWIP() {
+    logMessage("This feature is a work in progress.");
+    setTimeout(promptForCategory, 2000);
+}
+
+function promptForLoan() {
+    const decisionsContainer = document.getElementById('decisions');
+    const maxLoan = gameState.money * 2;
+    let formHTML = `
+        <p>You can borrow up to ${maxLoan.toFixed(2)}.</p>
+        <p>The loan will have a 10% interest rate, with a weekly payment of 2% of the original loan amount.</p>
+        <div>
+            <label>Loan Amount:</label>
+            <input type="number" id="loan-amount" min="0" max="${maxLoan}" value="0">
+        </div>
+        <button id="get-loan-button">Get Loan</button>
+    `;
+    decisionsContainer.innerHTML = formHTML;
+    document.getElementById('get-loan-button').addEventListener('click', getLoan);
+}
+
+function getLoan() {
+    const loanAmount = parseInt(document.getElementById('loan-amount').value);
+    if (loanAmount > 0 && loanAmount <= gameState.money * 2) {
+        gameState.money += loanAmount;
+        gameState.debt += loanAmount * 1.1; // 10% interest
+        logMessage(`You have taken out a loan of ${loanAmount.toFixed(2)}.`);
+        renderState();
+        saveGameState();
+        simulateWeek();
+    } else {
+        logMessage("Invalid loan amount.");
+    }
+}
+
+function promptForSupplies() {
     const decisionsContainer = document.getElementById('decisions');
     let formHTML = `<p>What would you like to get?</p>`;
     config.supplies.forEach(item => {
@@ -103,10 +183,21 @@ function buySupplies() {
 }
 
 function simulateWeek() {
+    if (gameState.debt > 0) {
+        const weeklyPayment = gameState.debt * 0.02;
+        if (gameState.money >= weeklyPayment) {
+            gameState.money -= weeklyPayment;
+            gameState.debt -= weeklyPayment;
+            logMessage(`Paid ${weeklyPayment.toFixed(2)} towards your loan.`);
+        } else {
+            logMessage("You don't have enough money to make your loan payment.");
+        }
+    }
+
     for (let i = 0; i < 7; i++) {
         simulateDay();
     }
-    promptForDecisions();
+    promptForCategory();
 }
 
 function simulateDay() {
