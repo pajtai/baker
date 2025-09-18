@@ -46,7 +46,7 @@ function renderState() {
     stateContainer.innerHTML += `<p>Debt: ${gameState.debt.toFixed(2)}</p>`;
     stateContainer.innerHTML += `<h3>Supplies</h3>`;
     gameState.supplies.forEach(item => {
-        stateContainer.innerHTML += `<p>${item.name}: ${item.quantity} ${item.unit}</p>`;
+        stateContainer.innerHTML += `<p>${item.name}: ${Math.ceil(item.quantity)} ${item.unit}</p>`;
     });
     stateContainer.innerHTML += `<h3>Equipment</h3>`;
     gameState.equipment.forEach(item => {
@@ -80,10 +80,15 @@ function promptForCategory() {
             <input type="radio" id="cat-loan" name="category" value="loan">
             <label for="cat-loan">Loan</label>
         </div>
-        <button id="select-category-button">Select</button>
+        <div>
+            <input type="radio" id="cat-nothing" name="category" value="nothing">
+            <label for="cat-nothing">Nothing</label>
+        </div>
     `;
     decisionsContainer.innerHTML = formHTML;
-    document.getElementById('select-category-button').addEventListener('click', handleCategoryChoice);
+    document.querySelectorAll('input[name="category"]').forEach(radio => {
+        radio.addEventListener('change', handleCategoryChoice);
+    });
 }
 
 function handleCategoryChoice() {
@@ -98,6 +103,9 @@ function handleCategoryChoice() {
             break;
         case 'loan':
             promptForLoan();
+            break;
+        case 'nothing':
+            simulateWeek();
             break;
     }
 }
@@ -118,9 +126,11 @@ function promptForLoan() {
             <input type="number" id="loan-amount" min="0" max="${maxLoan}" value="0">
         </div>
         <button id="get-loan-button">Get Loan</button>
+        <button id="cancel-loan-button">Cancel</button>
     `;
     decisionsContainer.innerHTML = formHTML;
     document.getElementById('get-loan-button').addEventListener('click', getLoan);
+    document.getElementById('cancel-loan-button').addEventListener('click', promptForCategory);
 }
 
 function getLoan() {
@@ -149,8 +159,10 @@ function promptForSupplies() {
         `;
     });
     formHTML += `<button id="purchase-button">Purchase</button>`;
+    formHTML += `<button id="cancel-button">Cancel</button>`;
     decisionsContainer.innerHTML = formHTML;
     document.getElementById('purchase-button').addEventListener('click', buySupplies);
+    document.getElementById('cancel-button').addEventListener('click', promptForCategory);
 }
 
 function buySupplies() {
