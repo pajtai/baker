@@ -86,12 +86,45 @@ function promptForCategory() {
         </div>
     `;
     decisionsContainer.innerHTML = formHTML;
-    document.querySelectorAll('input[name="category"]').forEach(radio => {
+    const radios = document.querySelectorAll('input[name="category"]');
+    radios.forEach(radio => {
         radio.addEventListener('change', handleCategoryChoice);
     });
+
+    let selectedIndex = -1;
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIndex = (selectedIndex + 1) % radios.length;
+            radios[selectedIndex].checked = true;
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (selectedIndex <= 0) {
+                selectedIndex = radios.length - 1;
+            } else {
+                selectedIndex = (selectedIndex - 1);
+            }
+            radios[selectedIndex].checked = true;
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selectedIndex !== -1) {
+                handleCategoryChoice();
+            }
+        }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    handleCategoryChoice.cleanup = () => {
+        document.removeEventListener('keydown', handleKeyDown);
+    };
 }
 
 function handleCategoryChoice() {
+    if (handleCategoryChoice.cleanup) {
+        handleCategoryChoice.cleanup();
+    }
     const selectedCategory = document.querySelector('input[name="category"]:checked').value;
     switch (selectedCategory) {
         case 'supplies':
@@ -129,8 +162,28 @@ function promptForLoan() {
         <button id="cancel-loan-button">Cancel</button>
     `;
     decisionsContainer.innerHTML = formHTML;
-    document.getElementById('get-loan-button').addEventListener('click', getLoan);
-    document.getElementById('cancel-loan-button').addEventListener('click', promptForCategory);
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+            cleanup();
+            promptForCategory();
+        }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    const cleanup = () => {
+        document.removeEventListener('keydown', handleKeyDown);
+    };
+
+    document.getElementById('get-loan-button').addEventListener('click', () => {
+        cleanup();
+        getLoan();
+    });
+    document.getElementById('cancel-loan-button').addEventListener('click', () => {
+        cleanup();
+        promptForCategory();
+    });
 }
 
 function getLoan() {
@@ -154,15 +207,63 @@ function promptForSupplies() {
         formHTML += `
             <div>
                 <label>${item.name} (${item.cost}/${item.unit})</label>
-                <input type="number" id="buy-${item.name}" min="0" value="0">
+                <input type="number" class="supply-input" id="buy-${item.name}" min="0" value="0" onfocus="this.select()">
             </div>
         `;
     });
     formHTML += `<button id="purchase-button">Purchase</button>`;
     formHTML += `<button id="cancel-button">Cancel</button>`;
     decisionsContainer.innerHTML = formHTML;
-    document.getElementById('purchase-button').addEventListener('click', buySupplies);
-    document.getElementById('cancel-button').addEventListener('click', promptForCategory);
+
+    const inputs = Array.from(document.querySelectorAll('.supply-input'));
+
+    const handleInputKeyDown = (e, index) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const nextIndex = (index + 1) % inputs.length;
+            inputs[nextIndex].focus();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prevIndex = (index - 1 + inputs.length) % inputs.length;
+            inputs[prevIndex].focus();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            cleanup();
+            buySupplies();
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+            cleanup();
+            promptForCategory();
+        } else if (e.key === 'ArrowDown') {
+            if (!inputs.includes(document.activeElement)) {
+                e.preventDefault();
+                inputs[0].focus();
+            }
+        } else if (e.key === 'ArrowUp') {
+            if (!inputs.includes(document.activeElement)) {
+                e.preventDefault();
+                inputs[inputs.length - 1].focus();
+            }
+        }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    const cleanup = () => {
+        document.removeEventListener('keydown', handleKeyDown);
+    };
+
+    document.getElementById('purchase-button').addEventListener('click', () => {
+        cleanup();
+        buySupplies();
+    });
+    document.getElementById('cancel-button').addEventListener('click', () => {
+        cleanup();
+        promptForCategory();
+    });
 }
 
 function buySupplies() {
